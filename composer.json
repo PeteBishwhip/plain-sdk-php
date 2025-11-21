@@ -3,10 +3,10 @@
     "description": "PHP SDK for Plain",
     "type": "library",
     "require": {
-        "php": "^8.1"
+        "php": "^8.1",
+        "arxy/graphql-codegen": "^1.0"
     },
     "require-dev": {
-        "arxy/graphql-codegen": "^1.0",
         "phpunit/phpunit": "^10.0"
     },
     "scripts": {
