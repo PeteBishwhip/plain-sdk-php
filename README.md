@@ -89,6 +89,29 @@ composer install
 php generate.php
 ```
 
+### Testing
+
+This project includes comprehensive PHPUnit tests:
+
+```bash
+# Run all tests
+composer test
+
+# Run tests with detailed output
+vendor/bin/phpunit --testdox
+
+# Run specific test suite
+vendor/bin/phpunit tests/Unit
+vendor/bin/phpunit tests/Integration
+```
+
+The test suite includes:
+
+- **Unit Tests** - Test generated type structures, properties, and methods
+- **Integration Tests** - Test code generation process and schema validation
+
+Tests automatically run on all pushes and pull requests via GitHub Actions across PHP 8.1, 8.2, and 8.3.
+
 ### Known Issues
 
 The `arxy/graphql-codegen` library has a bug where interfaces aren't registered before object types are processed. This project includes a patch in the GitHub Actions workflow and the local vendor files to handle this correctly.

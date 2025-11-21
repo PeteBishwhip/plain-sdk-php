@@ -1,0 +1,142 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+
+    name: PHP ${{ matrix.php-version }} Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Create schema directory
+        run: mkdir -p schema
+
+      - name: Download GraphQL schema
+        run: curl -o schema/schema.graphql https://core-api.uk.plain.com/graphql/v1/schema.graphql
+
+      - name: Apply graphql-codegen patch
+        run: |
+          # Apply patch for interface support
+          php -r "
+          \$file = 'vendor/arxy/graphql-codegen/src/Generator.php';
+          \$content = file_get_contents(\$file);
+
+          // Add interface type handlers in the first visitor pass
+          \$search1 = '                    NodeKind::ENUM_TYPE_DEFINITION => function (EnumTypeDefinitionNode \$definitionNode) use (
+                        \$module
+                    ) {';
+          \$replace1 = '                    NodeKind::INTERFACE_TYPE_DEFINITION => function (InterfaceTypeDefinitionNode \$definitionNode) use (
+                        \$module
+                    ) {
+                        if (isset(\$this->moduleTypeMapping[\$definitionNode->name->value])) {
+                            return;
+                        }
+                        // Register interface with placeholder - will be updated with implementing types later
+                        \$this->baseTypeMappingRegistry[\$definitionNode->name->value] = [];
+                        \$this->moduleTypeMappingRegistry[\$module->getName()][\$definitionNode->name->value] = [];
+                    },
+                    NodeKind::INTERFACE_TYPE_EXTENSION => function (InterfaceTypeExtensionNode \$definitionNode) use (
+                        \$module
+                    ) {
+                        if (isset(\$this->moduleTypeMapping[\$definitionNode->name->value])) {
+                            return;
+                        }
+                        // Register interface extension with placeholder
+                        \$this->moduleTypeMappingRegistry[\$module->getName()][\$definitionNode->name->value] = [];
+                    },
+                    NodeKind::ENUM_TYPE_DEFINITION => function (EnumTypeDefinitionNode \$definitionNode) use (
+                        \$module
+                    ) {';
+          \$content = str_replace(\$search1, \$replace1, \$content);
+
+          // Add interface type population in second visitor pass
+          \$search2 = '                },
+            ]);
+        }
+        foreach (\$this->modules as \$module) {';
+          \$replace2 = '                },
+                NodeKind::INTERFACE_TYPE_DEFINITION => function (InterfaceTypeDefinitionNode \$interface) use (\$module) {
+                    // Find all types that implement this interface
+                    foreach (\$this->documents as \$moduleInner => \$document) {
+                        foreach (\$document->definitions as \$definition) {
+                            if (!\$definition instanceof ObjectTypeDefinitionNode && !\$definition instanceof ObjectTypeExtensionNode) {
+                                continue;
+                            }
+                            if (\$definition instanceof TypeExtensionNode) {
+                                continue;
+                            }
+                            if (!isset(\$definition->interfaces)) {
+                                continue;
+                            }
+                            foreach (\$definition->interfaces as \$definitionInterface) {
+                                if (\$definitionInterface->name->value === \$interface->name->value) {
+                                    // Add the implementing type to the interface'\''s type mapping
+                                    \$this->baseTypeMappingRegistry[\$interface->name->value] = [
+                                        ...(\$this->baseTypeMappingRegistry[\$interface->name->value] ?? []),
+                                        ...(\$this->baseTypeMappingRegistry[\$definition->name->value] ?? []),
+                                    ];
+
+                                    \$this->moduleTypeMappingRegistry[\$module->getName()][\$interface->name->value] = [
+                                        ...(\$this->moduleTypeMappingRegistry[\$module->getName()][\$interface->name->value] ?? []),
+                                        ...(\$this->moduleTypeMappingRegistry[\$moduleInner][\$definition->name->value] ?? []),
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
+                    if (isset(\$this->baseTypeMappingRegistry[\$interface->name->value])) {
+                        \$this->baseTypeMappingRegistry[\$interface->name->value] = array_unique(
+                            \$this->baseTypeMappingRegistry[\$interface->name->value]
+                        );
+                    }
+                    if (isset(\$this->moduleTypeMappingRegistry[\$module->getName()][\$interface->name->value])) {
+                        \$this->moduleTypeMappingRegistry[\$module->getName()][\$interface->name->value] = array_unique(
+                            \$this->moduleTypeMappingRegistry[\$module->getName()][\$interface->name->value]
+                        );
+                    }
+                },
+            ]);
+        }
+        foreach (\$this->modules as \$module) {';
+          \$content = str_replace(\$search2, \$replace2, \$content);
+
+          file_put_contents(\$file, \$content);
+          echo 'Patch applied successfully';
+          "
+
+      - name: Create output directory
+        run: mkdir -p src/Generated
+
+      - name: Generate PHP types
+        run: php generate.php
+
+      - name: Run tests
+        run: vendor/bin/phpunit --testdox
+
+      - name: Check code syntax
+        run: |
+          echo "Checking generated code syntax..."
+          find src/Generated -name "*.php" -print0 | xargs -0 -n1 php -l | grep -v "No syntax errors" || true

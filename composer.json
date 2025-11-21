@@ -6,7 +6,13 @@
         "php": "^8.1"
     },
     "require-dev": {
-        "arxy/graphql-codegen": "^1.0"
+        "arxy/graphql-codegen": "^1.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "generate": "php generate.php"
     },
     "autoload": {
         "psr-4": {
