@@ -85,6 +85,9 @@ $input = new CreateCustomerInput(
 # Install dependencies
 composer install
 
+# Apply patch to graphql-codegen (required for interface support)
+php patch-codegen.php
+
 # Generate types
 php generate.php
 ```
@@ -114,7 +117,7 @@ Tests automatically run on all pushes and pull requests via GitHub Actions acros
 
 ### Known Issues
 
-The `arxy/graphql-codegen` library has a bug where interfaces aren't registered before object types are processed. This project includes a patch in the GitHub Actions workflow and the local vendor files to handle this correctly.
+The `arxy/graphql-codegen` library has a bug where interfaces aren't registered before object types are processed. This project includes a `patch-codegen.php` script that automatically patches the library to handle this correctly. The patch is automatically applied in both GitHub Actions workflows and must be run locally after `composer install`.
 
 ## Future Plans
 
