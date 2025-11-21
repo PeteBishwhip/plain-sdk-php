@@ -1,0 +1,61 @@
+name: Generate GraphQL Types
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight (optional)
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
+
+      - name: Create schema directory
+        run: mkdir -p schema
+
+      - name: Download GraphQL schema
+        run: |
+          curl -o schema/schema.graphql https://core-api.uk.plain.com/graphql/v1/schema.graphql
+          echo "Downloaded schema size: $(wc -c < schema/schema.graphql) bytes"
+
+      - name: Apply graphql-codegen patch
+        run: php patch-codegen.php
+
+      - name: Create output directory
+        run: mkdir -p src/Generated
+
+      - name: Generate PHP types
+        run: php generate.php
+
+      - name: Check generated files
+        run: |
+          echo "Generated $(find src/Generated -name '*.php' | wc -l) PHP files"
+          ls -lh src/Generated/ | head -20
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: regenerate GraphQL types from Plain schema'
+          branch: graphql-types-update
+          delete-branch: true
+          title: 'Update GraphQL Types'
+          body: |
+            This PR updates the generated GraphQL types from the Plain API schema.
+
+            - Downloaded schema from: https://core-api.uk.plain.com/graphql/v1/schema.graphql
+            - Generated types using arxy/graphql-codegen
+
+            Please review the changes before merging.

@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+
+    name: PHP ${{ matrix.php-version }} Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Create schema directory
+        run: mkdir -p schema
+
+      - name: Download GraphQL schema
+        run: curl -o schema/schema.graphql https://core-api.uk.plain.com/graphql/v1/schema.graphql
+
+      - name: Apply graphql-codegen patch
+        run: php patch-codegen.php
+
+      - name: Create output directory
+        run: mkdir -p src/Generated
+
+      - name: Generate PHP types
+        run: php generate.php
+
+      - name: Run tests
+        run: vendor/bin/phpunit --testdox
+
+      - name: Check code syntax
+        run: |
+          echo "Checking generated code syntax..."
+          find src/Generated -name "*.php" -print0 | xargs -0 -n1 php -l | grep -v "No syntax errors" || true
