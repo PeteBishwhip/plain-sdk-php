@@ -21,7 +21,7 @@ $module = new Module(
     namespace: 'Plain\\Generated',
     directory: __DIR__ . '/src/Generated',
     typeMapping: [
-        'DateTime' => DateTimeInterface::class,
+        // Plain's DateTime is an object type, not a scalar, so no custom mapping needed
     ],
 );
 

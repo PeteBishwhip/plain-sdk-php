@@ -113,27 +113,22 @@ class CodeGenerationTest extends TestCase
         $this->assertStringContainsString('private readonly', $content, 'Properties should be private readonly');
     }
 
-    public function testDateTimeTypeIsMappedCorrectly(): void
+    public function testDateTimeTypeIsGenerated(): void
     {
         if (!is_dir($this->generatedPath)) {
             $this->markTestSkipped('Generated directory does not exist. Run: php generate.php');
         }
 
-        // Find files that might use DateTime
-        $files = glob($this->generatedPath . '/*.php');
-        $dateTimeFound = false;
+        // Plain's DateTime is an object type with fields, not a scalar
+        // Verify the DateTime Args classes are generated
+        $expectedDateTimeFiles = [
+            'DateTimeUnixTimestampArgs.php',
+            'DateTimeIso8601Args.php',
+        ];
 
-        foreach ($files as $file) {
-            $content = file_get_contents($file);
-            if (strpos($content, 'DateTimeInterface') !== false) {
-                $dateTimeFound = true;
-                $this->assertStringContainsString('DateTimeInterface', $content, 'DateTime should be mapped to DateTimeInterface');
-                break;
-            }
-        }
-
-        if (!$dateTimeFound) {
-            $this->markTestIncomplete('Could not find a file with DateTime type to verify mapping');
+        foreach ($expectedDateTimeFiles as $expectedFile) {
+            $filePath = $this->generatedPath . '/' . $expectedFile;
+            $this->assertFileExists($filePath, "DateTime Args file {$expectedFile} should be generated");
         }
     }
 }
