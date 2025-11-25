@@ -10,16 +10,20 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 error_reporting(E_ALL);
 
+if (! file_exists(__DIR__ . '/src')) {
+    mkdir(__DIR__ . '/src', 0777, true);
+}
+
 $baseModule = new BaseModule(
     namespace: 'Plain\\Generated',
-    directory: __DIR__ . '/src/Generated'
+    directory: __DIR__ . '/src'
 );
 
 $module = new Module(
     name: 'plain',
     schema: __DIR__ . '/schema/schema.graphql',
     namespace: 'Plain\\Generated',
-    directory: __DIR__ . '/src/Generated',
+    directory: __DIR__ . '/src',
     typeMapping: [
         // Plain's DateTime is an object type, not a scalar, so no custom mapping needed
     ],
@@ -33,4 +37,4 @@ $generator = new Generator(
 $generator->execute();
 
 echo "Code generation completed successfully!\n";
-echo "Generated files are in: src/Generated/\n";
+echo "Generated files are in: src/\n";
