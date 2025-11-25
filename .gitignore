@@ -5,3 +5,6 @@
 /.phpunit.cache/
 /schema/schema.graphql
 /coverage/
+
+# AI
+.claude

@@ -32,7 +32,7 @@ curl -o schema/schema.graphql https://core-api.uk.plain.com/graphql/v1/schema.gr
 php generate.php
 ```
 
-The generated types will be in `src/Generated/`.
+The generated types will be in `src/`.
 
 ### Automated Generation via GitHub Actions
 
