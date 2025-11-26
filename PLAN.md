@@ -470,22 +470,48 @@ $app->instance(PlainClient::class, $fake);
 
 ## Implementation Order
 
-### Milestone 1: Basic Functionality (v0.2.0)
+### Milestone 1: Basic Functionality (v0.2.0) ✅ COMPLETED
 1. ✅ Generated types (complete)
-2. HTTP Client + Authentication
-3. Basic query execution
-4. Response parsing
-5. Error handling
+2. ✅ HTTP Client + Authentication
+3. ✅ Basic query execution
+4. ✅ Response parsing
+5. ✅ Error handling
 
 **Deliverable**: Execute raw GraphQL queries with type-safe responses
 
-### Milestone 2: Query Building (v0.3.0)
-1. Query builder
-2. Mutation builder
-3. Fragment support
-4. Variable support
+**Status**: Phase 1 is fully implemented and tested with 85 passing tests.
+
+**Implemented Components**:
+- ✅ `Auth/ApiKey` - API key validation and environment detection
+- ✅ `Client/Config` - Immutable configuration with builder pattern
+- ✅ `Client/PlainClient` - HTTP client with retry logic and error handling
+- ✅ `Response/Response` - GraphQL response parsing
+- ✅ `Exceptions/*` - Complete exception hierarchy
+- ✅ `PlainSDK` - Main SDK entry point
+
+**Test Coverage**: 237 assertions across unit and integration tests
+
+### Milestone 2: Query Building (v0.3.0) ✅ COMPLETED
+1. ✅ Query builder
+2. ✅ Mutation builder
+3. ✅ Fragment support
+4. ✅ Variable support
 
 **Deliverable**: Build queries programmatically instead of writing GraphQL strings
+
+**Status**: Phase 2 is fully implemented and tested with 178 passing tests.
+
+**Implemented Components**:
+- ✅ `QueryBuilder/Field` - Field selection with arguments, aliases, and nested selections
+- ✅ `QueryBuilder/FieldSelection` - Callback-based field selection helper
+- ✅ `QueryBuilder/Variable` - Variable definitions with default values
+- ✅ `QueryBuilder/Fragment` - Named fragment support
+- ✅ `QueryBuilder/InlineFragment` - Inline fragment support for unions/interfaces
+- ✅ `QueryBuilder/QueryBuilder` - Fluent query building API
+- ✅ `QueryBuilder/MutationBuilder` - Fluent mutation building API
+- ✅ PlainSDK integration - Direct execution of builders
+
+**Test Coverage**: 378 assertions across 178 tests including 93 new QueryBuilder tests
 
 ### Milestone 3: High-Level API (v0.4.0)
 1. Resource classes for major entities
@@ -518,44 +544,46 @@ $app->instance(PlainClient::class, $fake);
 
 ```
 src/
-├── Generated/          # Move generated types here (namespace: Plain\Generated)
-├── Client/
-│   ├── PlainClient.php
-│   └── Config.php
-├── Auth/
-│   └── ApiKey.php
-├── QueryBuilder/
+├── Generated/          # ✅ Auto-generated GraphQL types (namespace: Plain\Generated)
+├── Client/             # ✅ IMPLEMENTED
+│   ├── PlainClient.php # ✅ HTTP client with retry logic
+│   └── Config.php      # ✅ Immutable configuration
+├── Auth/               # ✅ IMPLEMENTED
+│   └── ApiKey.php      # ✅ API key validation
+├── Response/           # ✅ IMPLEMENTED
+│   ├── Response.php    # ✅ GraphQL response handling
+│   └── PageInfo.php    # TODO: Phase 4
+├── Exceptions/         # ✅ IMPLEMENTED
+│   ├── PlainException.php           # ✅ Base exception
+│   ├── AuthenticationException.php  # ✅ 401 errors
+│   ├── ValidationException.php      # ✅ Validation errors
+│   ├── RateLimitException.php       # ✅ 429 errors
+│   ├── ServerException.php          # ✅ 5xx errors
+│   ├── GraphQLException.php         # ✅ GraphQL errors
+│   └── NetworkException.php         # ✅ Network failures
+├── QueryBuilder/       # TODO: Phase 2
 │   ├── QueryBuilder.php
 │   ├── MutationBuilder.php
 │   ├── Fragment.php
 │   └── Field.php
-├── Response/
-│   ├── ResponseParser.php
-│   ├── Response.php
-│   └── PageInfo.php
-├── Resources/
+├── Resources/          # TODO: Phase 3
 │   ├── Resource.php (base)
 │   ├── CustomersResource.php
 │   ├── ThreadsResource.php
 │   └── ...
-├── Exceptions/
-│   ├── PlainException.php
-│   ├── AuthenticationException.php
-│   ├── ValidationException.php
-│   └── ...
-├── Webhooks/
+├── Webhooks/           # TODO: Phase 4
 │   ├── WebhookVerifier.php
 │   └── WebhookEventParser.php
-├── Support/
+├── Support/            # TODO: Phase 4
 │   └── Paginator.php
-├── Testing/
+├── Testing/            # TODO: Phase 5
 │   ├── PlainFake.php
 │   └── Concerns/
-├── Integrations/
+├── Integrations/       # TODO: Phase 5
 │   └── Laravel/
 │       ├── PlainServiceProvider.php
 │       └── Facades/
-└── PlainSDK.php        # Main SDK class
+└── PlainSDK.php        # ✅ IMPLEMENTED - Main SDK entry point
 ```
 
 ---

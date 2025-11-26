@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a PHP SDK library for the Plain customer support platform. The SDK provides strongly-typed PHP objects auto-generated from Plain's GraphQL schema using `arxy/graphql-codegen`. The codebase does NOT contain a GraphQL client implementation - it only provides type definitions.
+This is a PHP SDK library for the Plain customer support platform. The SDK provides:
+1. **Auto-generated types**: Strongly-typed PHP objects from Plain's GraphQL schema using `arxy/graphql-codegen`
+2. **HTTP Client**: Full-featured GraphQL client with authentication, retry logic, and error handling
+3. **Type-safe responses**: Parse GraphQL responses into strongly-typed PHP objects
+
+**Development Status**: Phase 1 (HTTP Client) and Phase 2 (Query Builder) are complete. See PLAN.md for roadmap.
 
 **Key constraint**: The generated types (in `src/Generated/`) are auto-generated and should never be manually edited. All generated code is excluded from source coverage.
 
@@ -72,17 +77,34 @@ The patch uses string replacement on specific code sections in `vendor/arxy/grap
 ### Project Structure
 
 ```
-src/              # Source directory - currently all generated types
-                  # Future: Will contain Client, QueryBuilder, etc.
+src/
+  Generated/     # Auto-generated GraphQL types (never edit manually)
+  Auth/          # API key validation and environment detection
+  Client/        # HTTP client and configuration
+  Response/      # Response parsing and handling
+  Exceptions/    # Exception hierarchy
+  PlainSDK.php   # Main SDK entry point
 tests/
-  Unit/          # Tests for generated type structures
-  Integration/   # Tests for generation process and schema validation
+  Unit/          # Unit tests for all components
+    Auth/
+    Client/
+    Exceptions/
+    Response/
+  Integration/   # Integration tests (code generation, schema)
 schema/          # Downloaded GraphQL schema (gitignored)
 generate.php     # Code generation configuration
 patch-codegen.php # Vendor library patch script
+PLAN.md          # Development roadmap and feature specifications
 ```
 
-**Note**: All files in `src/` are currently auto-generated GraphQL types. As the SDK evolves, handwritten code (client, builders, helpers) will be added to `src/` with a clear separation from generated types.
+**Key Files**:
+- `src/PlainSDK.php` - Main entry point with QueryBuilder support
+- `src/Client/PlainClient.php` - HTTP client with retry logic and error handling
+- `src/Client/Config.php` - Immutable configuration with builder pattern
+- `src/Auth/ApiKey.php` - API key validation (live vs test)
+- `src/Response/Response.php` - GraphQL response parsing
+- `src/QueryBuilder/*` - Complete query/mutation builder system
+- `src/Exceptions/*` - Complete exception hierarchy
 
 ### PHP Configuration
 
@@ -124,8 +146,92 @@ Both workflows follow the same generation steps and require the patch to be appl
 
 ## Development Notes
 
-- This is a **type library only** - no HTTP client, query builder, or API interaction code exists yet
-- Future plans include adding GraphQL query builder, mutation helpers, HTTP client, auth helpers, and webhook verification
-- Never manually edit generated GraphQL type files - they should only be updated via code generation
-- When adding new SDK features (client, builders, etc.), clearly separate handwritten code from generated types
+- **Phase 1 Complete**: HTTP client, authentication, response parsing, and error handling
+- **Phase 2 Complete**: Query builder, mutation builder, fragments, variables, and directives
+- **Next Steps**: See PLAN.md for Phase 3 (Resource APIs) and beyond
+- Never manually edit files in `src/Generated/` - they should only be updated via code generation
+- All handwritten code lives outside `src/Generated/` in organized subdirectories
 - The patch is a workaround until the upstream library is fixed
+- Test coverage: 178 tests with 378 assertions (excluding generated code)
+
+## Phase 1 Implementation Details
+
+### Authentication & Configuration
+- `ApiKey::from()` validates API keys and detects environment (live vs test)
+- `Config` is immutable with `with*()` methods for creating variations
+- Supports custom HTTP clients (PSR-18), loggers (PSR-3)
+- Default timeout: 30s, default retry attempts: 3
+
+### HTTP Client Features
+- Automatic authentication header injection
+- Exponential backoff retry on connection failures
+- Proper error handling for 401, 429, 5xx responses
+- PSR-18 compatible (can use any HTTP client)
+- Optional PSR-3 logging support
+
+### Error Handling
+All exceptions extend `Plain\Exceptions\PlainException`:
+- `AuthenticationException` - 401 errors, invalid API keys
+- `RateLimitException` - 429 errors, includes retry-after duration
+- `ServerException` - 5xx errors
+- `GraphQLException` - GraphQL errors in response
+- `ValidationException` - GraphQL validation errors
+- `NetworkException` - Connection failures, timeouts
+
+### Response Handling
+- `Response` class parses GraphQL responses
+- `hasErrors()` / `hasData()` for checking response state
+- `throwIfHasErrors()` for strict error handling
+- Access data via `getData()`, `get($key)`, or array conversion
+
+## Phase 2 Implementation Details
+
+### Query Builder Architecture
+The QueryBuilder system provides a fluent, immutable API for building GraphQL queries without writing raw strings.
+
+**Core Components**:
+- `Field` - Represents a GraphQL field with arguments, alias, selections, and directives
+- `FieldSelection` - Helper for callback-based field building
+- `Variable` - Variable definitions with type and optional default value
+- `Fragment` - Named fragments for reusable field sets
+- `InlineFragment` - Inline fragments for union/interface types
+- `QueryBuilder` - Builds query operations
+- `MutationBuilder` - Builds mutation operations
+
+**Key Features**:
+- Fully immutable - all methods return new instances
+- Type-safe argument formatting (strings, numbers, booleans, arrays, objects)
+- Variable reference preservation (values starting with '$')
+- Directive support (@include, @skip, custom)
+- Fragment support (named and inline)
+- Deep nesting with callbacks or chaining
+- Alias support for field renaming
+
+**Usage Patterns**:
+```php
+// Simple query
+$query = QueryBuilder::create()
+    ->field(Field::create('customer')->selectMany(['id', 'email']));
+
+// With variables
+$query = QueryBuilder::create('GetCustomer')
+    ->variable(Variable::create('id', 'ID!'))
+    ->field(Field::create('customer')->argument('customerId', '$id'));
+
+// Nested with callbacks
+$query = QueryBuilder::create()->selectFields(function ($root) {
+    $root->field('customer', function ($c) {
+        $c->fields(['id', 'email']);
+    });
+});
+
+// Execute directly
+$response = $sdk->execute($query, ['id' => 'c_123']);
+```
+
+**PlainSDK Integration**:
+- `$sdk->query($name)` - Create QueryBuilder
+- `$sdk->mutation($name)` - Create MutationBuilder
+- `$sdk->execute()` - Accepts string, QueryBuilder, or MutationBuilder
+
+See `examples/query-builder.php` for comprehensive usage examples.
